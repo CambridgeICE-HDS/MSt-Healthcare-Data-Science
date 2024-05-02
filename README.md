@@ -1,4 +1,7 @@
-# Health Data Science Project
-This repository holds code example for an exploratory data analysis and data visualisation task on open source dataset of *Patient-level dataset to study the effect of COVID-19 in people with Multiple Sclerosis* provided by Hamza Khan  ,  Lotte Geys  ,  peer baneke  ,  Giancarlo Comi  ,  Liesbet Peeters. [DOI (latest version)](https://doi.org/10.13026/3cmh-xa68)
+# Healthcare Data Science Project
+*Torabi F. al. 2-24-25*
 
-Overview of the data is available in the [Data](https://github.com/MSt-Health-Data-Science/HDS-Project/tree/main/Data) folder
+Welcome to the team. We use this repository as the main collaborative space for the course. If you are one of our enrolled students and want to join as a collaborator on this project then please feel free to raise a pull request or contact the course director: `ft355@cam.ac.uk`
+
+# Capstone Assignment
+For those of you who are doing the MicroMastest via edX platform you will recieve all the requried instructions in your course area. 
