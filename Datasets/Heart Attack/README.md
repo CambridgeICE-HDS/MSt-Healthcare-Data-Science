@@ -1,7 +1,7 @@
 # [Heart Attack Analysis & Prediction Dataset](https://www.kaggle.com/datasets/rashikrahmanpritom/heart-attack-analysis-prediction-dataset/data)
 
 ## Abstract
-This is an open source dataset that is published under creative common licence. It holds information on 
+This is an open source dataset that is published under creative common licence. 
 
 ## Data Description
 This dataset provides information about heart attach patients, there are 14 columns presented in the data of which 13 holding integer values on patient characteristics, clinical measurement or comorbidites and one decimal values providing details on old peak.
