@@ -4,7 +4,7 @@
 This is an open source dataset that is published under creative common licence. It holds information on patients and their cardiovascular risk factors.
 
 ## Data Description
-This dataset provides information about heart attach patients, there are 13 columns presented in the data of which the last column `cardio` indicates presence or absence of cardiovascular disease.
+This dataset provides information about heart attack patients, there are 13 columns presented in the data of which the last column `cardio` indicates presence or absence of cardiovascular disease.
 
 Following is the detailed description of the variables included in the dataset:
 
