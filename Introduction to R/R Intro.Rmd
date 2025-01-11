@@ -1,0 +1,240 @@
+---
+title:    "Introduction to R"
+author:   "fatemeh.torabi@ice.cam.ac.uk"
+output: 
+  rmdformats::material
+---
+
+# Preamble 
+
+In this course we take you through a focused establishment of R, there are many courses available that you can take to further improve your skills with R programming but the focus here is to enable you to use this language comfortably for your health data science projects. We will cover: 
+
+* Set up
+* Importing data
+* Data Analysis
+* Statistical inference
+* Comparison of means
+* Analysis of Variance 
+* Correlation 
+* Regression
+* Prediction
+* Model comparison 
+* Statistical power
+
+# Set up
+# Importing data
+# Data Analysis
+# Statistical inference
+# Comparison of means
+# Analysis of Variance 
+# Correlation 
+# Regression
+# Prediction
+# Model comparison 
+# Statistical power
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(DT)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(plotly)) install.packages("plotly")
+if(!require(ggplot2)) install.packages("ggplot2")
+if(!require(dplyr)) install.packages("dplyr")
+if(!require(ggplot2)) install.packages("ggplot2")
+if(!require(gapminder)) install.packages("gapminder")
+if(!require(gganimate)) install.packages("gganimate")
+
+# Load
+library(tidyverse)
+library(knitr)
+library(DT)
+library(plotly)
+library(ggplot2)
+library(dplyr)
+library(gapminder)
+```
+
+# Report structure
+
+### Abstract 
+Provide the reader with a succinct summary of your work
+
+### Introduction
+Provide an introduction to you portfolio to reader. 
+
+### Method
+covering data access requirements, ethics, metadata and all methodological aspects of your project
+
+### Results
+Use this section to showcase the results of your data manipulation that will contribute to the project
+
+### Conclusion
+Summaries your findings,discuss them in the context of other similar work or questions and suggestions for future work. Conclude your portfolio with what started your data exploration and what have the data contributed in the decisions for patient care or health service delivery.  
+
+# Data Visualisation 
+
+## Area graph
+
+```{r GapmScatLine,echo=FALSE, warning=FALSE}
+g <- crosstalk::SharedData$new(gapminder, ~continent)
+gg <- ggplot(g, aes(gdpPercap, lifeExp, color = continent, frame = year)) +
+  geom_point(aes(size = pop, ids = country)) +
+  geom_smooth(se = FALSE, method = "lm") +
+  scale_x_log10()+
+  theme(legend.position = "top")
+
+ggplotly(gg) %>% 
+  highlight("plotly_hover")
+
+```
+
+## Area graph
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(data=gapminder, aes(x=lifeExp, fill=continent)) +
+    geom_density(alpha=0.3)+
+  labs(x = "Life expectency", y = "Density") +
+  theme(legend.position = "top")
+
+```
+## line plot
+
+```{r, echo=FALSE}
+p <- ggplot(
+  data=airquality,
+  aes(Day, Temp, group = Month, color = factor(Month))
+  ) +
+  geom_line() +
+  scale_color_viridis_d() +
+  labs(x = "Day of Month", y = "Temperature") +
+  theme(legend.position = "top")
+
+ggplotly(p)
+```
+
+## Scatterplots
+
+```{r, echo=FALSE}
+p <- ggplot(data=iris, aes(Petal.Length,Sepal.Length)) +
+geom_point(aes(color=Species)) + 
+ggtitle("Petal Length vs Sepal Length")+
+scale_color_viridis_d()
+
+ggplotly(p)
+
+```
+
+## Animated graphs
+
+Sometimes even with interactive graphs, the picture is not complete. Adding movements to a complex graph can help make the relationship between the variables more transparent and add more meaning to the graphs. To achieve this, we use animations.  
+
+```{r, echo=FALSE}
+# libraries:
+library(ggplot2)
+library(gganimate)
+
+p <- ggplot(
+  gapminder, 
+  aes(x = gdpPercap, y=lifeExp, size = pop, colour = country)
+  ) +
+  geom_point(show.legend = FALSE, alpha = 0.7) +
+  scale_color_viridis_d() +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  labs(x = "GDP per capita", y = "Life expectancy")
+
+p + facet_wrap(~continent)
+```
+
+
+## Bubble graphs
+A template bubble graph using the airquality dataset in R.
+
+```{r, echo=FALSE}
+airQuality_plot <- 
+  ggplot(airquality, aes(x = Day, y = Ozone, 
+										color= as.factor(Month),
+										text = paste("Month:", Month))) +
+	geom_point(size = airquality$Wind) +
+	ggtitle("Air Quality in New York by Day") +
+	labs(x = "Day of the month", y = "Ozone (ppb)", color="Month") +
+	scale_color_viridis_d()+
+  #scale_x_continuous(breaks = seq(1, 31, 5))+
+	scale_size(range = c(1, 10))
+
+#creating the interactive version
+ggplotly(airQuality_plot, tooltip=c("text","x","y"))
+
+```
+
+# Metadata and data tables
+
+## defining a dataframe 
+
+```{r dataframe1, message=FALSE}
+MM.HDS <- data.frame(
+  Courses = c("Course 1","Course 2","Course 3","Course 4","Course 5"), 
+  Unit_Titles=c(
+    "Harnessing data for healthcare advancement",
+    "The impact of big data on healthcare",
+    "Mastering critical analysis in evidence-based healthcare",
+    "Navigating complex health data challenges",
+    "Capstone Assignment"
+  ),
+  Indicative_Learning_hours = c(
+    "30 hrs",
+    "30 hrs",
+    "30 hrs",
+    "30 hrs",
+    "30 hrs"
+  ))
+
+kable(MM.HDS)
+```
+
+## Interactive data elements
+
+```{r dataframe2, message=FALSE}
+DT::datatable(
+  MM.HDS,
+  extensions = 'Buttons',
+  options = list(
+              paging = TRUE,
+              searching = TRUE,
+              fixedColumns = TRUE,
+              autoWidth = TRUE,
+              ordering = TRUE,
+              dom = 'tB',
+              buttons = c('copy', 'excel')
+              ),
+              class = "display"
+)
+```
+
+## Loading an existing data frame
+
+```{r loaddata, echo=FALSE}
+library(readr)
+file.url <- "https://raw.githubusercontent.com/CambridgeICE-HDS/MSt-Healthcare-Data-Science/refs/heads/main/Datasets/COVID-MS/GDSI_OpenDataset_Final.csv"
+
+ddata <- read.csv(url(file.url))
+
+DT::datatable(
+  ddata,
+  extensions = 'Buttons',
+  options = list(
+              paging = TRUE,
+              searching = TRUE,
+              fixedColumns = TRUE,
+              autoWidth = TRUE,
+              ordering = TRUE,
+              dom = 'tB',
+              buttons = c('copy', 'excel')
+              ),
+              class = "display"
+)
+```
