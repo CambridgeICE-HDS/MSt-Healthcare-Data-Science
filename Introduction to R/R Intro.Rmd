@@ -69,6 +69,7 @@ knitr::opts_chunk$set(echo = TRUE)
 if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
 if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
 if(!require(DT)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(rmdformats)) install.packages("rmdformats")
 if(!require(plotly)) install.packages("plotly")
 if(!require(ggplot2)) install.packages("ggplot2")
 if(!require(dplyr)) install.packages("dplyr")
@@ -272,3 +273,4 @@ R <- ggplot(gap_long,
 
 R
 ```
+
