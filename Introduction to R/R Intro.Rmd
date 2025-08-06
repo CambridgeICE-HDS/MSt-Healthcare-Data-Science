@@ -1,41 +1,69 @@
 ---
 title:    "Introduction to R"
-author:   "fatemeh.torabi@ice.cam.ac.uk"
+author:   "fatemeh.torabi@pace.cam.ac.uk"
 output: 
   rmdformats::material
 ---
 
 # Preamble 
 
-In this course we take you through a focused establishment of R, there are many courses available that you can take to further improve your skills with R programming but the focus here is to enable you to use this language comfortably for your health data science projects. We will cover: 
+In this intro we take you through a focused approach for using R to generate data visualization elements from simulated data, this precise focus aims to enable you to use R more comfortably for your data visualization approaches. We will cover: 
 
+* Installation
 * Set up
-* Importing data
-* Data Analysis
-* Statistical inference
-* Comparison of means
-* Analysis of Variance 
-* Correlation 
-* Regression
-* Prediction
-* Model comparison 
-* Statistical power
+* Data visualisation
+* Line plots
+* Area graph
+* Scatter plots
+* Animated graphs
+
+
+
+# Installing R & RStudio
+
+## Install R
+R is the programming language you'll be using.
+Go to: https://cran.r-project.org
+Click on your operating system: 
+
+* Windows → Click "Download R for Windows" → "base" → then click the .exe file to download.
+
+* macOS → Click "Download R for (Mac) OS X" → choose the .pkg file and install.
+
+* Linux → Follow instructions relevant to your Linux distribution.
+
+## Install RStudio (Recommended IDE)
+RStudio is a user-friendly interface for R. Note that R must be installed before RStudio. 
+
+Go to: https://posit.co/download/rstudio-desktop/
+
+* Download the free version of RStudio Desktop for your OS.
+
+* Install it.
+
+* Run the installer and follow the default installation steps.
+
+## Installing required packages
+
+Open RStudio, you can run the following script to install the recommended set of packages. These are widely used for data analysis and report writing.
+ 
+
+`install.packages(c("tidyverse", "ggplot2", "dplyr", "rmarkdown", "knitr"))`
+
+## Posit Cloud
+Alternatively you can use all of the codes we provide to you here on a cloud version of R. For this:
+
+* Go to: https://posit.cloud
+
+* Click Sign Up (use your email, Google, GitHub, etc.)or Log In if you already have an account.
+
+* Once logged in, click "New Project". This opens an RStudio environment in your browser — no installation needed.
 
 # Set up
-# Importing data
-# Data Analysis
-# Statistical inference
-# Comparison of means
-# Analysis of Variance 
-# Correlation 
-# Regression
-# Prediction
-# Model comparison 
-# Statistical power
 
+The following code chunk includes the required packages in this EDA. 
 
-
-```{r setup, include=FALSE}
+```{r setup, echo=TRUE, eval=TRUE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
@@ -47,6 +75,7 @@ if(!require(dplyr)) install.packages("dplyr")
 if(!require(ggplot2)) install.packages("ggplot2")
 if(!require(gapminder)) install.packages("gapminder")
 if(!require(gganimate)) install.packages("gganimate")
+if(!require(ggalluvial)) install.packages("ggalluvial")
 
 # Load
 library(tidyverse)
@@ -56,28 +85,82 @@ library(plotly)
 library(ggplot2)
 library(dplyr)
 library(gapminder)
+library(ggalluvial)
+
 ```
-
-# Report structure
-
-### Abstract 
-Provide the reader with a succinct summary of your work
-
-### Introduction
-Provide an introduction to you portfolio to reader. 
-
-### Method
-covering data access requirements, ethics, metadata and all methodological aspects of your project
-
-### Results
-Use this section to showcase the results of your data manipulation that will contribute to the project
-
-### Conclusion
-Summaries your findings,discuss them in the context of other similar work or questions and suggestions for future work. Conclude your portfolio with what started your data exploration and what have the data contributed in the decisions for patient care or health service delivery.  
 
 # Data Visualisation 
 
-## Area graph
+Creating data visualisation elements in R empowers you to explore, communicate, and understand complex patterns in large scale data with clarity and precision.
+
+Through powerful packages like ggplot2, R enables the transformation of raw numbers into meaningful, customisable visuals and reproducible data visualistion elements. From simple line plots to interactive graphs and dashboards. 
+
+This visual storytelling enhances transparency, supports decision-making, and makes findings accessible to diverse audiences, including those without technical backgrounds.
+
+# Line plot
+
+```{r, echo=FALSE, fig.width=6, fig.height=4, fig.align='center'}
+library(ggplot2)
+library(dplyr)
+library(viridis)
+
+# Convert month numbers to names
+airquality <- airquality %>%
+  mutate(Month = factor(Month, 
+                        levels = 5:9, 
+                        labels = c("May", "June", "July", "August", "September")))
+
+# Plot with actual month names
+p <- ggplot(
+  data = airquality,
+  aes(Day, Temp, group = Month, color = Month)
+  ) +
+  geom_line() +
+  scale_color_viridis_d() +
+  labs(x = "Day of Month", y = "Temperature", color = "Month") +
+  theme(legend.position = "top")
+
+p
+
+
+```
+
+
+## interactive line plot 
+
+```{r, echo=FALSE, fig.width=6, fig.height=4, fig.align='center'}
+ggplotly(p)
+```
+
+
+# Area graph
+
+```{r, echo=FALSE, fig.width=6, fig.height=4, fig.align='center'}
+a <- ggplot(data=gapminder, aes(x=lifeExp, fill=continent)) +
+    geom_density(alpha=0.3)+
+  labs(x = "Life expectency", y = "Density") +
+  theme(legend.position = "top")
+
+a
+```
+
+```{r, echo=FALSE, fig.width=6, fig.height=4, fig.align='center'}
+ggplotly(a)
+```
+
+# Scatterplots
+
+```{r, echo=FALSE}
+p <- ggplot(data=iris, aes(Petal.Length,Sepal.Length)) +
+geom_point(aes(color=Species)) + 
+ggtitle("Petal Length vs Sepal Length")+
+scale_color_viridis_d()
+
+ggplotly(p)
+
+```
+
+# Interactive plots
 
 ```{r GapmScatLine,echo=FALSE, warning=FALSE}
 g <- crosstalk::SharedData$new(gapminder, ~continent)
@@ -92,43 +175,7 @@ ggplotly(gg) %>%
 
 ```
 
-## Area graph
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-ggplot(data=gapminder, aes(x=lifeExp, fill=continent)) +
-    geom_density(alpha=0.3)+
-  labs(x = "Life expectency", y = "Density") +
-  theme(legend.position = "top")
-
-```
-## line plot
-
-```{r, echo=FALSE}
-p <- ggplot(
-  data=airquality,
-  aes(Day, Temp, group = Month, color = factor(Month))
-  ) +
-  geom_line() +
-  scale_color_viridis_d() +
-  labs(x = "Day of Month", y = "Temperature") +
-  theme(legend.position = "top")
-
-ggplotly(p)
-```
-
-## Scatterplots
-
-```{r, echo=FALSE}
-p <- ggplot(data=iris, aes(Petal.Length,Sepal.Length)) +
-geom_point(aes(color=Species)) + 
-ggtitle("Petal Length vs Sepal Length")+
-scale_color_viridis_d()
-
-ggplotly(p)
-
-```
-
-## Animated graphs
+# Animated graphs
 
 Sometimes even with interactive graphs, the picture is not complete. Adding movements to a complex graph can help make the relationship between the variables more transparent and add more meaning to the graphs. To achieve this, we use animations.  
 
@@ -151,7 +198,7 @@ p + facet_wrap(~continent)
 ```
 
 
-## Bubble graphs
+# Bubble graphs
 A template bubble graph using the airquality dataset in R.
 
 ```{r, echo=FALSE}
@@ -171,70 +218,57 @@ ggplotly(airQuality_plot, tooltip=c("text","x","y"))
 
 ```
 
-# Metadata and data tables
+# River plots
 
-## defining a dataframe 
+River plots (also known as Sankey diagrams or alluvial plots) are useful for visualizing flow or transition between categories over time. Here's how to create an alluvial/river plot using the gapminder dataset in R with the ggalluvial package. Click to maximise the plot. 
 
-```{r dataframe1, message=FALSE}
-MM.HDS <- data.frame(
-  Courses = c("Course 1","Course 2","Course 3","Course 4","Course 5"), 
-  Unit_Titles=c(
-    "Harnessing data for healthcare advancement",
-    "The impact of big data on healthcare",
-    "Mastering critical analysis in evidence-based healthcare",
-    "Navigating complex health data challenges",
-    "Capstone Assignment"
-  ),
-  Indicative_Learning_hours = c(
-    "30 hrs",
-    "30 hrs",
-    "30 hrs",
-    "30 hrs",
-    "30 hrs"
-  ))
+This type of plots are highly relevant when you are investigating concepts such as disease progression where patients might move from one state to a more advance state of their disease throughout their life course. 
 
-kable(MM.HDS)
-```
+```{r, echo=FALSE, fig.width=10, fig.align='left', fig.height=6}
+# Step 1: Create income group and filter for target years
+gap_filtered <- gapminder %>%
+  filter(year %in% c(1962, 1982, 2002)) %>%
+  mutate(income_group = case_when(
+    gdpPercap < 1000 ~ "Low",
+    gdpPercap < 4000 ~ "Lower-Middle",
+    gdpPercap < 12000 ~ "Upper-Middle",
+    TRUE ~ "High"
+  )) %>%
+  select(country, year, income_group)
 
-## Interactive data elements
+# Step 2: Pivot to wide format to filter countries with full data
+gap_wide <- gap_filtered %>%
+  pivot_wider(names_from = year, values_from = income_group)
 
-```{r dataframe2, message=FALSE}
-DT::datatable(
-  MM.HDS,
-  extensions = 'Buttons',
-  options = list(
-              paging = TRUE,
-              searching = TRUE,
-              fixedColumns = TRUE,
-              autoWidth = TRUE,
-              ordering = TRUE,
-              dom = 'tB',
-              buttons = c('copy', 'excel')
-              ),
-              class = "display"
-)
-```
+# Keep only countries with complete data
+gap_wide <- na.omit(gap_wide)
 
-## Loading an existing data frame
+# Step 3: Pivot back to long format
+gap_long <- gap_wide %>%
+  mutate(country_id = row_number()) %>%  # unique ID per country
+  pivot_longer(cols = c(`1962`, `1982`, `2002`), 
+               names_to = "year", 
+               values_to = "income_group")
 
-```{r loaddata, echo=FALSE}
-library(readr)
-file.url <- "https://raw.githubusercontent.com/CambridgeICE-HDS/MSt-Healthcare-Data-Science/refs/heads/main/Datasets/COVID-MS/GDSI_OpenDataset_Final.csv"
+gap_long$year <- factor(gap_long$year, levels = c("1962", "1982", "2002"))
 
-ddata <- read.csv(url(file.url))
+# Step 4: Create river plot
+R <- ggplot(gap_long,
+       aes(x = year, stratum = income_group, alluvium = country_id, 
+           fill = income_group, label = income_group)) +
+  geom_flow(stat = "alluvium", lode.guidance = "forward", alpha = 0.6) +
+  geom_stratum() +
+  scale_fill_manual(values = c(
+    "Low" = "#d73027",
+    "Lower-Middle" = "#fc8d59",
+    "Upper-Middle" = "#91bfdb",
+    "High" = "#4575b4"
+  )) +
+  theme_minimal() +
+  labs(title = "Changes in Income Group Over Time",
+       subtitle = "Gapminder GDP per capita (selected years)",
+       y = "Number of countries",
+       fill = "Income Group")
 
-DT::datatable(
-  ddata,
-  extensions = 'Buttons',
-  options = list(
-              paging = TRUE,
-              searching = TRUE,
-              fixedColumns = TRUE,
-              autoWidth = TRUE,
-              ordering = TRUE,
-              dom = 'tB',
-              buttons = c('copy', 'excel')
-              ),
-              class = "display"
-)
+R
 ```
