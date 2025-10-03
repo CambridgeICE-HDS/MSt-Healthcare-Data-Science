@@ -116,7 +116,7 @@ DT::datatable(
 
 ```{r loaddata, echo=FALSE}
 library(readr)
-file.url <- "https://raw.githubusercontent.com/MSt-Health-Data-Science/HDS-Project/main/Data/GDSI_OpenDataset_Final.csv"
+file.url <- "https://raw.githubusercontent.com/CambridgeICE-HDS/MSt-Healthcare-Data-Science/refs/heads/main/Datasets/COVID-MS/GDSI_OpenDataset_Final.csv"
 
 ddata <- read.csv(url(file.url))
 
