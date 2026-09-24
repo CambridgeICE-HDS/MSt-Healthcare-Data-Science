@@ -1,0 +1,356 @@
+---
+title: "CVD dataset: descriptive and inferential statistics practical"
+author: "Dr Fatemeh Torabi"
+output: 
+  rmdformats::readthedown
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+```
+
+# Practical session
+
+For the practical activities, we will use the **CVD dataset**. 
+
+Run the chunks in order. Write a short interpretation under each question before looking at the next result. These are observational, cross-sectional data: associations do not establish causation. Blood pressure is recorded in mmHg; age is supplied in days.
+
+## Research questions
+
+- **RQ1:** Is there a difference in ages between those with and without CVD?
+- **RQ2:** Is there a difference in systolic BP between those with and without CVD?
+- **RQ3:** Is there a difference in alcohol status between those with and without CVD?
+
+# Task 1. Data preparation
+
+## a) Read in the dataset
+
+The dataset is hosted in the [course GitHub repository](https://github.com/CambridgeICE-HDS/MSt-Healthcare-Data-Science/blob/main/Datasets/CDV%20dataset/CVD%20dataset.xlsx). Install `readxl` once if needed with `install.packages("readxl")`. The code downloads the workbook, then reads the `cardio_train` sheet; its other sheet is a data dictionary. An internet connection is required when knitting.
+
+Note: if you download the file and want to import it from a local repository you need to alter the following script to where you have saved the file in your computer.
+
+```{r read-data}
+dataset_url <- paste0(
+  "https://raw.githubusercontent.com/CambridgeICE-HDS/",
+  "MSt-Healthcare-Data-Science/main/Datasets/",
+  "CDV%20dataset/CVD%20dataset.xlsx"
+)
+dataset_file <- tempfile(fileext = ".xlsx")
+download.file(dataset_url, destfile = dataset_file, mode = "wb", quiet = TRUE)
+cvd_raw <- readxl::read_excel(dataset_file, sheet = "cardio_train")
+stopifnot(all(c("age", "weight", "ap_hi", "ap_lo", "alco", "cardio") %in%
+                names(cvd_raw)))
+dim(cvd_raw)
+str(cvd_raw)
+head(cvd_raw)
+```
+
+## b) Convert the age variable into years
+
+We use 365.25 days per year and retain the original `age` column for reference.
+
+```{r age-years}
+cvd <- cvd_raw %>% mutate(age_years = age / 365.25)
+summary(cvd$age_years)
+```
+
+## c) Add appropriate labels to gender, cholesterol, glucose, smoking status, alcohol status, activity status, cardiovascular status
+
+Codes: gender 1 = women, 2 = men; cholesterol and glucose 1 = normal, 2 = above normal, 3 = well above normal. Binary variables use 0 = no and 1 = yes. Here `alco` represents the dataset's reported alcohol status; its measurement window and quantity are unspecified.
+
+```{r labels}
+cvd <- cvd %>%
+  mutate(
+    gender_label = factor(gender, levels = c(1, 2), labels = c("Women", "Men")),
+    cholesterol_label = factor(cholesterol, levels = 1:3,
+                               labels = c("Normal", "Above normal", "Well above normal")),
+    glucose_label = factor(gluc, levels = 1:3,
+                           labels = c("Normal", "Above normal", "Well above normal")),
+    smoking_status = factor(smoke, levels = 0:1, labels = c("Does not smoke", "Smokes")),
+    alcohol_status = factor(alco, levels = 0:1, labels = c("No reported alcohol", "Reports alcohol")),
+    activity_status = factor(active, levels = 0:1, labels = c("Inactive", "Active")),
+    cardiovascular_status = factor(cardio, levels = 0:1, labels = c("No CVD", "CVD"))
+  )
+stopifnot(!anyNA(cvd[, c("gender_label", "cholesterol_label", "glucose_label",
+                         "smoking_status", "alcohol_status", "activity_status",
+                         "cardiovascular_status")]))
+```
+
+# Task 2. Data investigation
+
+## a) Calculate the mean and median for height, weight, systolic BP (ap_hi), and diastolic BP (ap_lo)
+
+```{r initial-summaries}
+summarise_numeric <- function(data, variables) {
+  do.call(rbind, lapply(variables, function(v) {
+    x <- data[[v]]
+    data.frame(variable = v, n = sum(!is.na(x)), mean = mean(x, na.rm = TRUE),
+               median = median(x, na.rm = TRUE), min = min(x, na.rm = TRUE),
+               max = max(x, na.rm = TRUE))
+  }))
+}
+before <- summarise_numeric(cvd, c("height", "weight", "ap_hi", "ap_lo"))
+kable(before, digits = 2)
+```
+
+## b) Produce a suitable graph to explore weight, systolic BP, and diastolic BP distributions
+
+These histograms show the main distribution. The range table and boxplots expose extremes that can be hidden by the histogram scale.
+
+```{r distributions, fig.width=9, fig.height=7}
+par(mfrow = c(3, 2), mar = c(4, 4, 2, 1))
+for (v in c("weight", "ap_hi", "ap_lo")) {
+  hist(cvd[[v]], breaks = 80, main = paste(v, "distribution"), xlab = v)
+  boxplot(cvd[[v]], horizontal = TRUE, main = paste(v, "extremes"), xlab = v)
+}
+par(mfrow = c(1, 1))
+```
+
+```{r tails}
+kable(summarise_numeric(cvd, c("weight", "ap_hi", "ap_lo")), digits = 1)
+```
+
+**Record:** Which values look impossible or like coding errors? Which are merely unusual? In this file, some BP values are negative or reach several thousand mmHg; weight reaches 10 kg.
+
+## c) Create and apply suitable cut-offs for weight, systolic BP, and diastolic BP
+
+For this teaching exercise, retain **30–300 kg**, **70–250 mmHg systolic**, and **40–150 mmHg diastolic**, with systolic **greater than** diastolic. These are pragmatic plausibility bounds, not diagnostic thresholds or validated clinical exclusion criteria. We set values outside a bound to `NA`, rather than deleting an entire person's record. If either BP value fails its bound or the pair is inconsistent, set **both** BP measurements to `NA` so that paired BP measures refer to the same valid observations. Preserve `cvd` as the uncleaned dataset.
+
+```{r clean-values}
+cvd_clean <- cvd %>%
+  mutate(
+    weight = if_else(!is.na(weight) & between(weight, 30, 300), weight, NA_real_),
+    valid_bp = !is.na(ap_hi) & !is.na(ap_lo) &
+      between(ap_hi, 70, 250) & between(ap_lo, 40, 150) & ap_hi > ap_lo,
+    ap_hi = if_else(valid_bp, as.numeric(ap_hi), NA_real_),
+    ap_lo = if_else(valid_bp, as.numeric(ap_lo), NA_real_)
+  )
+
+data.frame(
+  measure = c("Weight", "Systolic BP", "Diastolic BP"),
+  replaced_with_NA = c(sum(!is.na(cvd$weight) & is.na(cvd_clean$weight)),
+                       sum(!is.na(cvd$ap_hi) & is.na(cvd_clean$ap_hi)),
+                       sum(!is.na(cvd$ap_lo) & is.na(cvd_clean$ap_lo)))
+) %>% kable()
+```
+
+## d) Discussion point: implausible (impossible) versus unusual values
+
+An impossible value (for example, negative blood pressure) suggests a measurement or entry error. A high but physiologically possible value could describe someone who needs clinical attention. Should it be checked against source records, retained, or tested in a sensitivity analysis? Consider how exclusion could bias an estimate of CVD risk. Explain the choices above in your own words.
+
+# Task 3. Data summaries
+
+## a) Calculate separate proportions for CVD, smoking, and alcohol status
+
+Percentages use the number with **non-missing status for that variable** as denominator.
+
+```{r marginal-proportions}
+for (v in c("cardiovascular_status", "smoking_status", "alcohol_status")) {
+  cat("\n", v, "\n")
+  print(kable(data.frame(category = names(table(cvd_clean[[v]])),
+                         n = as.integer(table(cvd_clean[[v]])),
+                         percent = round(100 * prop.table(table(cvd_clean[[v]])), 1))))
+}
+```
+
+## b) Compare alcohol status and CVD; compare cholesterol groups and CVD
+
+The wording “those that don’t smoke with CVD” mixes smoking and alcohol. Here we compare **reports alcohol versus no reported alcohol among people with CVD**. A separate smoking comparison follows, in case that was intended. Row percentages in the cholesterol table answer: *within each cholesterol group, what percentage have CVD?*
+
+```{r categorical-comparisons}
+percentage_table <- function(row, outcome) {
+  counts <- table(row, outcome)
+  list(counts = counts, row_percent = round(100 * prop.table(counts, 1), 1))
+}
+
+alcohol_within_cvd <- table(cvd_clean$cardiovascular_status,
+                            cvd_clean$alcohol_status)
+kable(alcohol_within_cvd, caption = "Counts: CVD status by alcohol status")
+kable(round(100 * prop.table(alcohol_within_cvd, 1), 1),
+      caption = "Within each CVD group: percentage by alcohol status")
+
+smoking_within_cvd <- table(cvd_clean$cardiovascular_status,
+                            cvd_clean$smoking_status)
+kable(round(100 * prop.table(smoking_within_cvd, 1), 1),
+      caption = "Within each CVD group: percentage by smoking status")
+
+cholesterol_cvd <- percentage_table(cvd_clean$cholesterol_label,
+                                    cvd_clean$cardiovascular_status)
+kable(cholesterol_cvd$counts, caption = "Counts: cholesterol by CVD")
+kable(cholesterol_cvd$row_percent,
+      caption = "Within each cholesterol group: percentage with and without CVD")
+```
+
+**Write down:** Among people with CVD, what percentage report alcohol? What percentage report no alcohol? In each cholesterol group, what percentage has CVD? State the denominator each time.
+
+## c) Calculate the new means and medians for weight, systolic BP, and diastolic BP
+
+```{r revised-summaries}
+after <- summarise_numeric(cvd_clean, c("weight", "ap_hi", "ap_lo"))
+kable(after, digits = 2)
+```
+
+## d) Compare means with values before cleaning
+
+## e) Compare medians with values before cleaning
+
+```{r before-after}
+comparison <- before %>%
+  select(variable, mean_before = mean, median_before = median) %>%
+  inner_join(after %>% select(variable, mean_after = mean, median_after = median),
+             by = "variable") %>%
+  mutate(mean_change = mean_after - mean_before,
+         median_change = median_after - median_before)
+kable(comparison, digits = 2)
+```
+
+**Discuss separately:** Which means changed, and in what direction? Which medians changed? Why do extreme values generally affect the mean more than the median? Note that cleaning may remove a different number of observations for weight and BP.
+
+## f) Compare age and systolic BP between CVD groups using an appropriate summary
+
+Show both summaries first. Choose the **mean and standard deviation** for an approximately symmetric distribution, or **median and interquartile range (IQR)** when skewed. The BP cleaning decision may change group sample sizes.
+
+```{r group-summaries}
+group_summary <- cvd_clean %>%
+  group_by(cardiovascular_status) %>%
+  summarise(
+    n_age = sum(!is.na(age_years)), age_mean = mean(age_years, na.rm = TRUE),
+    age_sd = sd(age_years, na.rm = TRUE),
+    age_median = median(age_years, na.rm = TRUE),
+    age_IQR = IQR(age_years, na.rm = TRUE),
+    n_sbp = sum(!is.na(ap_hi)), sbp_mean = mean(ap_hi, na.rm = TRUE),
+    sbp_sd = sd(ap_hi, na.rm = TRUE),
+    sbp_median = median(ap_hi, na.rm = TRUE),
+    sbp_IQR = IQR(ap_hi, na.rm = TRUE), .groups = "drop"
+  )
+kable(group_summary, digits = 2)
+```
+
+# Task 4. Inferential statistics
+
+For each research question, report the group estimates, effect or test statistic, 95% confidence interval where available, p-value, and what the result means **in this dataset**. With approximately 70,000 records, small deviations from normality can appear significant in formal normality tests and small differences can produce very small p-values. Inspect plots and practical relevance too. The tests below are unadjusted for potential confounding.
+
+## a) RQ1: Check the assumptions of a parametric age comparison
+
+Welch's two-sample t-test assumes independent records and a meaningful numeric outcome; it tolerates unequal variances. Check sample sizes, distribution shape, and group standard deviations. Individual independence cannot be proven from a plot; check the sampling design and whether IDs represent distinct people.
+
+```{r age-assumptions, fig.width=9, fig.height=4}
+cvd_clean %>% group_by(cardiovascular_status) %>%
+  summarise(n = sum(!is.na(age_years)), sd = sd(age_years, na.rm = TRUE),
+            variance = var(age_years, na.rm = TRUE), .groups = "drop") %>% kable(digits = 2)
+ggplot(cvd_clean, aes(x = age_years)) +
+  geom_histogram(bins = 35, fill = "steelblue", color = "white") +
+  facet_wrap(~ cardiovascular_status) + labs(x = "Age (years)", y = "Number of people")
+```
+
+```{r age-qq, fig.width=9, fig.height=4}
+par(mfrow = c(1, 2))
+for (g in levels(cvd_clean$cardiovascular_status)) {
+  qqnorm(cvd_clean$age_years[cvd_clean$cardiovascular_status == g], main = g)
+  qqline(cvd_clean$age_years[cvd_clean$cardiovascular_status == g])
+}
+par(mfrow = c(1, 1))
+```
+
+**Decide:** Are there at least 20 people per group? Is each distribution approximately Normal, or is the test robust at these sample sizes? Are variances comparable? Welch's test does not require equal variances.
+
+## b) RQ1: Run the most appropriate test and interpret it
+
+```{r age-test}
+age_test <- t.test(age_years ~ cardiovascular_status, data = cvd_clean,
+                   var.equal = FALSE)
+age_test
+```
+
+The estimate and confidence interval are for **mean age in No CVD minus mean age in CVD**, given the factor order above. If strong skew or other issues undermine a mean comparison, consider `wilcox.test(age_years ~ cardiovascular_status, data = cvd_clean, conf.int = TRUE)` as a sensitivity analysis; it does not automatically test a difference in medians.
+
+## c) RQ2: Check the assumptions of a parametric systolic BP comparison
+
+Use the cleaned BP values. Inspect group sizes, spread, and shape as above. Pay attention to heavy tails and any remaining high BP measurements.
+
+```{r sbp-assumptions, fig.width=9, fig.height=4}
+cvd_clean %>% group_by(cardiovascular_status) %>%
+  summarise(n = sum(!is.na(ap_hi)), sd = sd(ap_hi, na.rm = TRUE),
+            variance = var(ap_hi, na.rm = TRUE), .groups = "drop") %>% kable(digits = 2)
+ggplot(cvd_clean, aes(x = ap_hi)) +
+  geom_histogram(bins = 40, fill = "darkorange", color = "white") +
+  facet_wrap(~ cardiovascular_status) +
+  labs(x = "Cleaned systolic BP (mmHg)", y = "Number of people")
+```
+
+```{r sbp-qq, fig.width=9, fig.height=4}
+par(mfrow = c(1, 2))
+for (g in levels(cvd_clean$cardiovascular_status)) {
+  qqnorm(cvd_clean$ap_hi[cvd_clean$cardiovascular_status == g], main = g)
+  qqline(cvd_clean$ap_hi[cvd_clean$cardiovascular_status == g])
+}
+par(mfrow = c(1, 1))
+```
+
+## d) RQ2: Perform the most appropriate test and interpret it
+
+Welch's t-test compares group **means** and is reasonably robust with large group sizes. If the clinical question is about typical values rather than means, discuss a median-focused analysis separately.
+
+```{r sbp-test}
+sbp_test <- t.test(ap_hi ~ cardiovascular_status, data = cvd_clean,
+                   var.equal = FALSE)
+sbp_test
+```
+
+Interpret the difference and its 95% CI in **mmHg**, in the direction **No CVD minus CVD**. Does the observed difference appear meaningful clinically?
+
+## e) RQ3: Check expected cell frequencies for alcohol status and CVD
+
+The Pearson chi-squared test compares the alcohol-status distribution by CVD status. Inspect **expected** counts, not just observed counts. Each person should contribute to one cell only.
+
+```{r alcohol-check}
+alcohol_table <- table(cvd_clean$alcohol_status,
+                       cvd_clean$cardiovascular_status)
+kable(alcohol_table, caption = "Observed counts")
+chi_preview <- suppressWarnings(chisq.test(alcohol_table, correct = FALSE))
+kable(round(chi_preview$expected, 1), caption = "Expected counts under independence")
+all(chi_preview$expected >= 5)
+```
+
+## f) RQ3: Perform the most appropriate test and interpret it
+
+Use Pearson's chi-squared test if expected counts are all at least 5; otherwise use Fisher's exact test. The p-value tests whether alcohol status and CVD status are independent, not whether alcohol causes CVD.
+
+```{r alcohol-test}
+alcohol_test <- if (all(chi_preview$expected >= 5)) {
+  chisq.test(alcohol_table, correct = FALSE)
+} else {
+  fisher.test(alcohol_table)
+}
+alcohol_test
+kable(round(100 * prop.table(alcohol_table, 1), 1),
+      caption = "Within each alcohol group: percentage with CVD")
+```
+
+## g) RQ3 Bonus: Calculate an odds ratio and 95% confidence interval
+
+Define exposure as **Reports alcohol** versus **No reported alcohol**, and outcome as **CVD** versus **No CVD**. The crude OR is the odds of CVD among those reporting alcohol divided by the odds among those reporting no alcohol. `fisher.test()` supplies an exact confidence interval and a conditional maximum likelihood estimate of the OR; the cross-product calculation below is the sample OR, so they can differ slightly.
+
+```{r alcohol-odds-ratio}
+a <- alcohol_table["Reports alcohol", "CVD"]
+b <- alcohol_table["Reports alcohol", "No CVD"]
+c <- alcohol_table["No reported alcohol", "CVD"]
+d <- alcohol_table["No reported alcohol", "No CVD"]
+crude_or <- (a * d) / (b * c)
+exact_or <- fisher.test(alcohol_table)
+data.frame(sample_OR = crude_or,
+           exact_OR = unname(exact_or$estimate),
+           CI_95_lower = exact_or$conf.int[1],
+           CI_95_upper = exact_or$conf.int[2]) %>% kable(digits = 3)
+```
+
+An OR above 1 indicates higher **observed odds** of CVD in those reporting alcohol; below 1 indicates lower observed odds. Report the interval and consider whether it includes 1. Avoid interpreting an OR as a risk ratio. Age, sex, smoking, selection, and alcohol reporting may confound this unadjusted association.
+
+## Final reflection
+
+1. How did BP cleaning change the estimated mean and median?
+2. Which of the three research questions addresses continuous versus categorical variables?
+3. How might you check whether the crude alcohol association changes after adjustment for age, gender, and smoking?
